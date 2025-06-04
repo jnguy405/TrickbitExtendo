@@ -1,0 +1,58 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "Trickbit-level-1.tmj",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 4,
+            "scaleInEditor": 4
+        },
+        "Trickbit-level-1.tmj": {
+            "scale": 1.5,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 2090.6666666666665,
+                "y": 275.6666666666667
+            }
+        },
+        "Trickbit-level-1.tmj#kenny_tilemap_packed": {
+            "scaleInDock": 3
+        },
+        "trickbit-level-1.tmx": {
+            "scale": 0.0625,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -688,
+                "y": 1384
+            }
+        },
+        "trickbit-level-1.tmx#kenny_tilemap_packed": {
+            "scaleInDock": 1
+        }
+    },
+    "last.imagePath": "C:/Users/jleeu/Downloads/UCSC/CMPM120/Trickbit/assets",
+    "map.height": 32,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 160,
+    "openFiles": [
+        "Trickbit-level-1.tmj"
+    ],
+    "project": "Trickbit.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "Trickbit-level-1.tmj",
+        "trickbit-level-1.tmx"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
