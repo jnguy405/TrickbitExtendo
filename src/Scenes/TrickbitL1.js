@@ -1,26 +1,9 @@
 // ----------------------------------------------------------------------------------------------------------------
 // Jenalee Nguyen jnguy405@ucsc.edu CMPM120 2-D Platformer
-// TO-DO LIST 
-    // Player Physics (done)
-    // Camera movement (done)
-    // Canvas config (done)
-    // Spikes collision logic (done)
-    // Enemy collision logic (done)
-    // Key collect logic (done)
-    // platform "falling" logic 
-    // key unlock door logic (done)
-    // audio for walking, jumping, opening chest, and dying (done)
-    // create the end game scene and restart (done)
-    // health display (done)
 
-// for funsies
-    // funny bird killing animation (falls/dies upon overlap but doesn't infringe on the player's momentum/path)
-    // key is being "held" by the player
-    // jump booster blocks (done)
-// ----------------------------------------------------------------------------------------------------------------
-class Trickbit extends Phaser.Scene {
+class TrickbitL1 extends Phaser.Scene {
     constructor() {
-        super("trickbitScene");
+        super("trickbitScene1");
     }
 
     init() {
