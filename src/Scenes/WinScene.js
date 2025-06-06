@@ -57,20 +57,7 @@ class WinScene extends Phaser.Scene {
         
         // Set up restart input
         this.input.keyboard.on('keydown-R', () => {
-            this.scene.start('trickbitScene');
+            this.scene.start('trickbitScene1');
         });
     }
-}
-
-// Ground Physics
-this.ACCELERATION = 400     // How fast you reach max speed
-this.MAX_SPEED = 200        // Speed cap
-this.DECELERATION = 10000   // How quickly you stop
-
-if (cursors.left.isDown) {
-    player.setAccelerationX(-ACCELERATION) // Left movement
-} else if (cursors.right.isDown) {
-    player.setAccelerationX(ACCELERATION)  // Right movement
-} else {
-    player.setDragX(DECELERATION) // Skidding stop
 }
