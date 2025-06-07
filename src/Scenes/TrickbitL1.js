@@ -18,7 +18,7 @@ class TrickbitL1 extends BasePlatformerScene {
     }
 
     preload() {
-        super.preload(); // Call parent preload
+        super.preload();
     }
 
     create() {

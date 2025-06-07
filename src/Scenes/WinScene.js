@@ -31,7 +31,7 @@ class WinScene extends Phaser.Scene {
         this.instructionText = this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 80,
-            'Press R to restart',
+            'Press R to return to Main Menu',
             {
                 fontFamily: 'Play',
                 fontSize: '64px',
@@ -57,7 +57,7 @@ class WinScene extends Phaser.Scene {
         
         // Set up restart input
         this.input.keyboard.on('keydown-R', () => {
-            this.scene.start('trickbitScene1');
+            this.scene.start('titleScreen');
         });
     }
 }

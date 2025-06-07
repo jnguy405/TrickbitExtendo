@@ -30,7 +30,7 @@ class Load extends Phaser.Scene {
 
         // Load tilemap information
         this.load.image("tilemap_tiles", "monochrome_tilemap_packed.png");          // Packed tilemap
-        this.load.tilemapTiledJSON("Trickbit-level-1", "Trickbit-level-1.tmj");     // Tilemap in JSON
+        this.load.tilemapTiledJSON("Trickbit-level-2", "Trickbit-level-2.tmj");     // Tilemap in JSON
         this.load.spritesheet("tilemap_sheet", "monochrome_tilemap_packed.png", {
             frameWidth: 16,
             frameHeight: 16
@@ -85,7 +85,7 @@ class Load extends Phaser.Scene {
             repeat: -1
         });
         
-        this.scene.start("trickbitScene1");
+        this.scene.start("titleScreen");
     }
 
     update() {
