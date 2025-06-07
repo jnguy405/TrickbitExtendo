@@ -61,7 +61,7 @@
         {
          "draworder":"topdown",
          "id":18,
-         "name":"Door",
+         "name":"Doors",
          "objects":[
                 {
                  "gid":57,

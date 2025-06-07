@@ -61,7 +61,6 @@ class Load extends Phaser.Scene {
                 { key: "tile_0244.png" }
             ]
         });
-         // ...and pass to the next Scene
          this.scene.start("trickbitScene1");
     }
 

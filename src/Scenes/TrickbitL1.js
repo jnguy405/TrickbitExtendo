@@ -1,6 +1,9 @@
 // ----------------------------------------------------------------------------------------------------------------
 // Jenalee Nguyen jnguy405@ucsc.edu CMPM120 2-D Platformer
 
+// TODO
+    // Change chest and door logic to key interactive (done)
+    // Change hitbox sizes of enemy and guide box
 class TrickbitL1 extends Phaser.Scene {
     constructor() {
         super("trickbitScene1");
@@ -22,21 +25,19 @@ class TrickbitL1 extends Phaser.Scene {
         this.boostTimer = null;
         this.JUMP_HEIGHT = this.BASE_JUMP_HEIGHT;
         this.PARTICLE_VELOCITY = 50;
-        
         // Camera Config
         this.targetZoom = 3;
         this.targetOffsetX = 0;
         this.currentOffsetX = 0;
         this.offsetLerpSpeed = 0.01; 
-
         // Tile Bias for spike collision idk i picked a random high number and it works
         this.physics.world.TILE_BIAS = 40;
-
         this.lastStepX = 0;          // Tracks the last X position where a step sound played
         this.stepDistance = 64;      // Play sound every 32 pixels
-        
         this.playerHealth = 100;
         this.coinsCollected = 0;
+        this.lastGuideTrigger = 0; // Track last trigger time
+        this.guideCooldown = 4000; // 5 seconds in ms
     }
 
     preload() {
@@ -60,6 +61,21 @@ class TrickbitL1 extends Phaser.Scene {
             obj.setScale(scaleSize);
             obj.x = obj.x * scaleSize;
             obj.y = obj.y * scaleSize;
+            
+            // Add interact text for chests
+            if (objectName === "chest") {
+                obj.interactText = this.add.text(
+                    obj.x,
+                    obj.y - 30,
+                    "Press E",
+                    {
+                        font: '12px Play',
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5).setVisible(false);
+            }
         });
         
         // Enable physics
@@ -74,6 +90,54 @@ class TrickbitL1 extends Phaser.Scene {
         });
     }
 
+    openChest(chest) {
+        const chestX = chest.x;
+        const chestY = chest.y;
+        if (chest.frame.name !== 390) { 
+            chest.setTexture("tilemap_sheet", 390);
+            this.sound.play('chestie', {volume: 0.3});
+            this.coinsCollected += 1;
+
+            if (chest.interactText) {
+                chest.interactText.destroy();
+            }
+            
+            // Particle effect
+            this.chestBurst.setPosition(chest.x, chest.y);
+            this.chestBurst.start();
+            // Create +1 text
+            const plusOneText = this.add.text(
+                chestX, 
+                chestY - 40,
+                "+1", 
+                { 
+                    font: '16px Play', 
+                    fill: '#FFFFFF',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                }
+            ).setOrigin(0.5);
+                
+            // Animate the text
+            this.tweens.add({
+                targets: plusOneText,
+                y: chestY - 80,  
+                alpha: 0,     
+                duration: 1000,
+                ease: 'Power1',
+                onComplete: () => {
+                    plusOneText.destroy();
+                }
+            });
+
+            this.time.delayedCall(1000, () => {
+                chest.destroy();
+                this.chestBurst.stop();
+            });
+        }
+    }
+        
+
     create() {
         // 16x16 tiles 160W 32H map (for scale = 2: 5120W 1024H px canvas (main.js))
         this.map = this.add.tilemap("Trickbit-level-1", 16, 16, 160, 32);
@@ -87,7 +151,6 @@ class TrickbitL1 extends Phaser.Scene {
         this.pipesLayer = this.map.createLayer("Pipes", this.tileset, 0, 0).setScale(scaleSize);
         this.miscLayer = this.map.createLayer("Misc", this.tileset, 0, 0).setScale(scaleSize);
         this.deathLayer = this.map.createLayer("Death", this.tileset, 0, 0).setScale(scaleSize);
-        this.enemyLayer = this.map.createLayer("Enemy", this.tileset, 0, 0).setScale(scaleSize);
         this.jumpBoosters = this.map.createLayer("Booster", this.tileset, 0, 0).setScale(scaleSize);
 
         // Create game objects using the helper function
@@ -95,17 +158,20 @@ class TrickbitL1 extends Phaser.Scene {
         this.keyobj = this.createGameObjects("Keys", "Key", 96);
         this.door = this.createGameObjects("Doors", "door", 56);
         this.chests = this.createGameObjects("Chests", "chest", 389);
+        this.enemies = this.createGameObjects("Enemy", "enemy", 343);
 
         // Collision Properties
         this.setCollision(this.baseLayer);
         this.setCollision(this.deathLayer);
-        this.setCollision(this.enemyLayer);
         this.setCollision(this.jumpBoosters);
 
         // Player Configuration
         my.sprite.player = this.physics.add.sprite(0, game.config.height/2, "tile_0240.png").setScale(SCALE);
         my.sprite.player.setCollideWorldBounds(true); 
         my.sprite.player.body.setSize(12, 16).setOffset(2, 0);
+
+        this.chestInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        this.doorInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
         // Player Particles
         // Walking
@@ -136,49 +202,55 @@ class TrickbitL1 extends Phaser.Scene {
 
         // Guide Collision
         this.physics.add.collider(my.sprite.player, this.guideblock, (player, block) => {
-            if (block.frame && block.frame.name === 27) {
-                // Change block texture
-                block.setTexture("tilemap_sheet", 7);
-            };    
-            this.sound.play('switch');
-            const guideText = this.add.text(
-                block.x, 
-                block.y - 50, 
-                'Find the key to unlock the door!', 
-                { 
-                    font: '16px Play', 
-                    fill: '#FFFFFF',
-                    stroke: '#000000',
-                    strokeThickness: 2,
-                    fontWeight: 'bold',
-                    alpha: 0
-                }
-            ).setOrigin(0.5).setScale(0.5);
+            const now = Date.now();
             
-            // Animation sequence
-            this.tweens.add({
-                targets: guideText,
-                alpha: 1,  // Fade in
-                scaleX: 1,
-                scaleY: 1,
-                x: block.x + 50,
-                y: block.y - 40,
-                duration: 500,
-                ease: 'Back.easeOut',
-                onComplete: () => {
-                    // After appearing, wait 3 seconds then fade out
-                    this.time.delayedCall(3000, () => {
-                        block.setTexture("tilemap_sheet", 27);
-                        this.tweens.add({
-                            targets: guideText,
-                            alpha: 0,
-                            y: guideText.y - 40,
-                            duration: 1000,
-                            onComplete: () => guideText.destroy()
-                        });
-                    });
+            // Only trigger if cooldown has passed
+            if (now - this.lastGuideTrigger >= this.guideCooldown) {
+                this.lastGuideTrigger = now; // Update last trigger time
+                
+                if (block.frame && block.frame.name === 27) {
+                    block.setTexture("tilemap_sheet", 7);
                 }
-            });
+                
+                this.sound.play('switch');
+                const guideText = this.add.text(
+                    block.x, 
+                    block.y - 50, 
+                    'Find the key to unlock the door!', 
+                    { 
+                        font: '16px Play', 
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2,
+                        fontWeight: 'bold',
+                        alpha: 0
+                    }
+                ).setOrigin(0.5).setScale(0.5);
+                
+                // Animation sequence
+                this.tweens.add({
+                    targets: guideText,
+                    alpha: 1,
+                    scaleX: 1,
+                    scaleY: 1,
+                    x: block.x + 50,
+                    y: block.y - 40,
+                    duration: 500,
+                    ease: 'Back.easeOut',
+                    onComplete: () => {
+                        this.time.delayedCall(3000, () => {
+                            block.setTexture("tilemap_sheet", 27);
+                            this.tweens.add({
+                                targets: guideText,
+                                alpha: 0,
+                                y: guideText.y - 40,
+                                duration: 1000,
+                                onComplete: () => guideText.destroy()
+                            });
+                        });
+                    }
+                });
+            }
         });
 
         // Spikes/Void Collision
@@ -197,85 +269,118 @@ class TrickbitL1 extends Phaser.Scene {
 
         // Door and Key Logic
         this.physics.add.collider(my.sprite.player, this.door, (player, door) => {
-            if (this.keyCollected) {
-                // Key collected, change door frame
-                if (door.frame && door.frame.name !== 58) { 
-                    door.setTexture("tilemap_sheet", 58);
-                    this.sound.play("doorOpen");
-                    this.time.delayedCall(500, () => {
-                        this.scene.start('winScene');
-                    });
-                }
-            } else {
-                // Key not collected logic remains the same
-                if (!this.keyNeededText) {
-                    this.keyNeededText = this.add.text(
-                        player.x, 
-                        player.y - 30, 
-                        "Key needed!", 
-                        { font: '16px Play', fill: '#ffffff' }
-                    ).setOrigin(0.5);
-                    
-                    this.time.addEvent({
-                        delay: 1500,
-                        callback: () => {
-                            if (this.keyNeededText) {
-                                this.keyNeededText.destroy();
-                                this.keyNeededText = null;
-                            }
-                        },
-                        callbackScope: this
-                    });
+            if (!door.interactText) {
+                // Create interaction text but keep it hidden initially
+                door.interactText = this.add.text(
+                    door.x, 
+                    door.y - 40, 
+                    "Press F", 
+                    { 
+                        font: '12px Play', 
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5).setVisible(false);
+            }
+            
+            // Show/hide text based on proximity
+            const distance = Phaser.Math.Distance.Between(
+                player.x, player.y,
+                door.x, door.y
+            );
+            door.isNearPlayer = distance < 80;
+            door.interactText.setVisible(door.isNearPlayer);
+            
+            // If player is near and presses F with key
+            if (door.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.doorInteract)) {
+                if (this.keyCollected) {
+                    // Key collected, open the door
+                    if (door.frame && door.frame.name !== 58) { 
+                        door.setTexture("tilemap_sheet", 58);
+                        this.sound.play("doorOpen");
+                        door.interactText.destroy();
+                        
+                        this.time.delayedCall(500, () => {
+                            this.scene.start('winScene');
+                        });
+                    }
+                } else {
+                    // Key not collected - show message
+                    if (!this.keyNeededText) {
+                        this.keyNeededText = this.add.text(
+                            player.x, 
+                            player.y - 30, 
+                            "Key needed!", 
+                            { font: '16px Play', fill: '#ffffff' }
+                        ).setOrigin(0.5);
+                        
+                        this.time.addEvent({
+                            delay: 1500,
+                            callback: () => {
+                                if (this.keyNeededText) {
+                                    this.keyNeededText.destroy();
+                                    this.keyNeededText = null;
+                                }
+                            },
+                            callbackScope: this
+                        });
+                    }
                 }
             }
         });
 
         // Enemy Collision
-        this.physics.add.collider(my.sprite.player, this.enemyLayer, (player, enemy) => {
-            this.enemyLayer.removeTileAt(enemy.x, enemy.y);
-            this.sound.play('damage', {volume: 0.2});
-            this.playerHealth = this.playerHealth - 20;
-            this.playerHealth = Math.max(0, this.playerHealth);
-            
-            // Create health text
-            const healthText = this.add.text(
-                player.x, 
-                player.y - 30, 
-                `${this.playerHealth}/100`, 
-                { 
-                    font: '16px Play', 
-                    fill: this.playerHealth < 30 ? '#FF0000' : '#FFFFFF', // Red or White
-                    stroke: '#000000',
-                    strokeThickness: 4,
-                    fontWeight: 'bold'
+        this.physics.add.collider(my.sprite.player, this.enemies, (player, enemy) => {
+            if (!enemy.hasCollided) {
+                enemy.hasCollided = true;
+
+                this.sound.play('damage', { volume: 0.2 });
+                this.playerHealth -= 20;
+                this.playerHealth = Math.max(0, this.playerHealth);
+
+                // Health popup text
+                const healthText = this.add.text(
+                    player.x,
+                    player.y - 30,
+                    `${this.playerHealth}/100`,
+                    {
+                        font: '16px Play',
+                        fill: this.playerHealth < 30 ? '#FF0000' : '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 4,
+                        fontWeight: 'bold'
+                    }
+                ).setOrigin(0.5).setScale(0.5);
+
+                // Animate health text
+                this.tweens.add({
+                    targets: healthText,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    y: player.y - 60,
+                    duration: 200,
+                    ease: 'Back.easeOut',
+                    yoyo: true,
+                    onComplete: () => {
+                        this.tweens.add({
+                            targets: healthText,
+                            y: healthText.y - 40,
+                            alpha: 0,
+                            duration: 800,
+                            onComplete: () => healthText.destroy()
+                        });
+                    }
+                });
+
+                // Destroy enemy or disable it
+                enemy.destroy();
+
+                // Restart if dead
+                if (this.playerHealth <= 0) {
+                    this.sound.play('deaddd', { volume: 0.5 });
+                    this.scene.restart();
                 }
-            ).setOrigin(0.5).setScale(0.5);
-            
-            // Animation sequence
-            this.tweens.add({
-                targets: healthText,
-                scaleX: 1.2,
-                scaleY: 1.2,
-                y: player.y - 60,
-                duration: 200,
-                ease: 'Back.easeOut',
-                yoyo: true,
-                onComplete: () => {
-                    // Then float up and fade
-                    this.tweens.add({
-                        targets: healthText,
-                        y: healthText.y - 40,
-                        alpha: 0,
-                        duration: 800,
-                        onComplete: () => healthText.destroy()
-                    });
-                }
-            });
-            
-            // Check for player death
-            if (this.playerHealth <= 0) {
-                this.sound.play('deaddd', {volume: 0.5});
-                this.scene.restart();
             }
         });
 
@@ -290,53 +395,7 @@ class TrickbitL1 extends Phaser.Scene {
             alpha: {start: 1, end: 0},
             rotate: {min: 0, max: 135},
         });
-        
         this.chestBurst.stop();
-
-        this.physics.add.collider(my.sprite.player, this.chests, (player, chest) => {
-            const chestX = chest.x;
-            const chestY = chest.y;
-            if (chest.frame && chest.frame.name !== 390) { 
-                chest.setTexture("tilemap_sheet", 390);
-                
-                // Play sound and particles
-                this.sound.play('chestie', {volume: 0.3});
-                this.coinsCollected += 1;
-                console.log(this.coinsCollected);
-                this.chestBurst.setPosition(chestX, chestY);
-                this.chestBurst.start();
-                
-                // Create +1 text
-                const plusOneText = this.add.text(
-                    chestX, 
-                    chestY - 40,
-                    "+1", 
-                    { 
-                        font: '16px Play', 
-                        fill: '#FFFFFF',
-                        stroke: '#000000',
-                        strokeThickness: 2
-                    }
-                ).setOrigin(0.5);
-                
-                // Animate the text
-                this.tweens.add({
-                    targets: plusOneText,
-                    y: chestY - 80,  
-                    alpha: 0,     
-                    duration: 1000,
-                    ease: 'Power1',
-                    onComplete: () => {
-                        plusOneText.destroy();
-                    }
-                });
-                
-                this.time.delayedCall(1000, () => {
-                    chest.destroy();
-                    this.chestBurst.stop();
-                });
-            }
-        });
 
         // Jump Boost Collision
         this.physics.add.collider(my.sprite.player, this.jumpBoosters, (player, booster) => {
@@ -500,5 +559,37 @@ class TrickbitL1 extends Phaser.Scene {
             }
         }
         this.cameras.main.setZoom(Phaser.Math.Linear(this.cameras.main.zoom, this.targetZoom, zoomSpeed));
+        
+        // Check door proximity and interaction
+        this.door.forEach(door => {
+            if (!door.active) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                my.sprite.player.x, my.sprite.player.y,
+                door.x, door.y
+            );
+            
+            door.isNearPlayer = distance < 80;
+            if (door.interactText) {
+                door.interactText.setVisible(door.isNearPlayer);
+            }
+        });
+
+        // Check chest proximity and interaction
+        this.chests.forEach(chest => {
+            if (!chest.active) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                my.sprite.player.x, my.sprite.player.y,
+                chest.x, chest.y
+            );
+            
+            chest.isNearPlayer = distance < 60;
+            chest.interactText.setVisible(chest.isNearPlayer);
+            
+            if (chest.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.chestInteract)) {
+                this.openChest(chest);
+            }
+        });
     }
 }
