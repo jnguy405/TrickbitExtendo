@@ -9,7 +9,7 @@ class TitleScene extends Phaser.Scene {
     init() {
         this.selectedLevel = 0;
         this.levels = [
-            { name: "PLAY", scene: "trickbitScene2", unlocked: true },
+            { name: "PLAY", scene: "trickbitScene1", unlocked: true },
             { name: "GUIDE", scene: "guideScene", unlocked: true },
             { name: "CREDITS", scene: "creditsScene", unlocked: true }
         ];

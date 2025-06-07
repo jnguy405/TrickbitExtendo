@@ -18,7 +18,7 @@ let config = {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    scene: [Load, TitleScene, TrickbitL2, WinScene]
+    scene: [Load, TitleScene, GuideScene, CreditsScene, TrickbitL1, TrickbitL2, TrickbitL3, WinScene]
 };
 
 const SCALE = 2.0;  

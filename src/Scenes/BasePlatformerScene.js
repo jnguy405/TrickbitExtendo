@@ -19,6 +19,7 @@ class BasePlatformerScene extends Phaser.Scene {
         // Physics World Config
         this.physics.world.TILE_BIAS = 40;
         this.physics.world.gravity.y = this.DOWN_GRAVITY;
+        this.physics.world.drawDebug = false;
     }
 
     initPhysicsConstants() {
@@ -76,7 +77,12 @@ class BasePlatformerScene extends Phaser.Scene {
             obj.setScale(scaleSize);
             obj.x = obj.x * scaleSize;
             obj.y = obj.y * scaleSize;
-            
+
+            if (objectName === "key") {
+                obj.body.setSize(5, 5);
+                obj.body.setOffset(3, 10);
+            }
+
             if (objectName === "chest") {
                 obj.interactText = this.add.text(
                     obj.x,
@@ -117,6 +123,8 @@ class BasePlatformerScene extends Phaser.Scene {
         
         return objects;
     }
+    
+    // Collision Prop
     setCollision(layer) {
         layer.setCollisionByProperty({
             collides: true
@@ -134,12 +142,6 @@ class BasePlatformerScene extends Phaser.Scene {
         this.doorInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         this.coordKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
         cursors = this.input.keyboard.createCursorKeys();
-
-        // Debug key
-        this.input.keyboard.on('keydown-D', () => {
-            this.physics.world.drawDebug = this.physics.world.drawDebug ? false : true
-            this.physics.world.debugGraphic.clear()
-        }, this);
     }
 
     // Particle systems setup
@@ -207,74 +209,6 @@ class BasePlatformerScene extends Phaser.Scene {
         });
     }
 
-    // Door
-    updateDoorInteractions() {
-        this.door.forEach(door => {
-            if (!door.active) return;
-            
-            const distance = Phaser.Math.Distance.Between(
-                my.sprite.player.x, my.sprite.player.y,
-                door.x, door.y
-            );
-            
-            door.isNearPlayer = distance < 80;
-            
-            // Create interact text if it doesn't exist
-            if (!door.interactText) {
-                door.interactText = this.add.text(
-                    door.x -20, 
-                    door.y - 40, 
-                    "Press F", 
-                    { 
-                        font: '12px Play', 
-                        fill: '#FFFFFF',
-                        stroke: '#000000',
-                        strokeThickness: 2
-                    }
-                ).setOrigin(0.5).setVisible(false);
-            }
-            
-            // Show/hide interact text based on distance
-            door.interactText.setVisible(door.isNearPlayer);
-            
-            // Handle door interaction
-            if (door.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.doorInteract)) {
-                if (this.keyCollected) {
-                    // Player has key - open the door
-                    if (door.frame && door.frame.name !== 58) { 
-                        door.setTexture("tilemap_sheet", 58);
-                        this.sound.play("doorOpen");
-                        door.interactText.destroy();
-                        
-                        this.time.delayedCall(500, () => {
-                            this.scene.start('winScene');
-                        });
-                    }
-                } else {
-                    // Player doesn't have key - show message
-                    if (!this.keyNeededText) {
-                        this.keyNeededText = this.add.text(
-                            my.sprite.player.x, 
-                            my.sprite.player.y - 30, 
-                            "Key needed!", 
-                            { font: '16px Play', fill: '#ffffff' }
-                        ).setOrigin(0.5);
-                        
-                        this.time.addEvent({
-                            delay: 1500,
-                            callback: () => {
-                                if (this.keyNeededText) {
-                                    this.keyNeededText.destroy();
-                                    this.keyNeededText = null;
-                                }
-                            },
-                            callbackScope: this
-                        });
-                    }
-                }
-            }
-        });
-    }
 
     // Enemy
     setupEnemyCollision() {

@@ -89,6 +89,10 @@ class TrickbitL1 extends BasePlatformerScene {
     setupGuideCollision() {
         this.physics.add.collider(my.sprite.player, this.guideblock, (player, block) => {
             const now = Date.now();
+            // Custom Hitbox 1
+            this.physics.world.enable(this.guideblock, Phaser.Physics.Arcade.STATIC_BODY);
+            block.body.setSize(20, 10);
+            block.body.setOffset(8, 20);
             
             if (now - this.lastGuideTrigger >= this.guideCooldown) {
                 this.lastGuideTrigger = now;
@@ -149,5 +153,74 @@ class TrickbitL1 extends BasePlatformerScene {
         if (Phaser.Input.Keyboard.JustDown(this.coordKey)){
             console.log(my.sprite.player.x, my.sprite.player.y);
         };
+    }
+
+    // Door
+    updateDoorInteractions() {
+        this.door.forEach(door => {
+            if (!door.active) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                my.sprite.player.x, my.sprite.player.y,
+                door.x, door.y
+            );
+            
+            door.isNearPlayer = distance < 80;
+            
+            // Create interact text if it doesn't exist
+            if (!door.interactText) {
+                door.interactText = this.add.text(
+                    door.x -20, 
+                    door.y - 40, 
+                    "Press F", 
+                    { 
+                        font: '12px Play', 
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5).setVisible(false);
+            }
+            
+            // Show/hide interact text based on distance
+            door.interactText.setVisible(door.isNearPlayer);
+            
+            // Handle door interaction
+            if (door.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.doorInteract)) {
+                if (this.keyCollected) {
+                    // Player has key - open the door
+                    if (door.frame && door.frame.name !== 58) { 
+                        door.setTexture("tilemap_sheet", 58);
+                        this.sound.play("doorOpen");
+                        door.interactText.destroy();
+                        
+                        this.time.delayedCall(500, () => {
+                            this.scene.start('trickbitScene2');
+                        });
+                    }
+                } else {
+                    // Player doesn't have key - show message
+                    if (!this.keyNeededText) {
+                        this.keyNeededText = this.add.text(
+                            my.sprite.player.x, 
+                            my.sprite.player.y - 30, 
+                            "Key needed!", 
+                            { font: '16px Play', fill: '#ffffff' }
+                        ).setOrigin(0.5);
+                        
+                        this.time.addEvent({
+                            delay: 1500,
+                            callback: () => {
+                                if (this.keyNeededText) {
+                                    this.keyNeededText.destroy();
+                                    this.keyNeededText = null;
+                                }
+                            },
+                            callbackScope: this
+                        });
+                    }
+                }
+            }
+        });
     }
 }

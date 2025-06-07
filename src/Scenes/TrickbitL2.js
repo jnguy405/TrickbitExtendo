@@ -5,6 +5,15 @@ class TrickbitL2 extends BasePlatformerScene {
 
     init() {
         super.init(); // Call parent init 
+        this.enemySpawnPoints = [
+            { x: 620, y: 752 },      
+            { x: 1770, y: 720 }, 
+            { x: 2898, y: 304 },
+            { x: 3034, y: 880 }, 
+            { x: 4015, y: 592 },
+            { x: 4387, y: 944 },
+            { x: 4965, y: 656 }, 
+        ];
     }
 
     preload() {
@@ -17,6 +26,9 @@ class TrickbitL2 extends BasePlatformerScene {
         
         // Create game objects
         this.createLevelObjects();
+
+        // Create enemies
+        this.createEnemiesAtCoordinates(this.enemySpawnPoints);
         
         // Setup player and particles
         this.setupPlayer();
@@ -24,8 +36,101 @@ class TrickbitL2 extends BasePlatformerScene {
         
         // Setup collisions and interactions
         this.setupCollisions();
-        this.physics.add.collider(my.sprite.player, this.fallingBrid);
-        this.physics.add.collider(my.sprite.player, this.fallingPlat);
+        
+        // Setup falling bridge collision with player
+        this.physics.add.collider(my.sprite.player, this.fallingBrid, (player, bridge) => {
+            // Only trigger once per bridge block
+            if (bridge.hasTriggered || bridge.isFalling) {
+                return;
+            }
+            
+            bridge.hasTriggered = true;
+            bridge.isFalling = true;
+            
+            // Store the original position and calculate target Y
+            bridge.originalY = bridge.y;
+            bridge.targetY = bridge.y + 800; // Adjust fall distance as needed
+            
+            // Add a small delay before the bridge starts falling for dramatic effect
+            this.time.delayedCall(100, () => {
+                // Optional: Add some visual feedback like shaking or particles
+                this.tweens.add({
+                    targets: bridge,
+                    x: bridge.x + Phaser.Math.Between(-2, 2),
+                    duration: 50,
+                    yoyo: true,
+                    repeat: 3,
+                    ease: 'Power2'
+                });
+                
+                // Start the falling tween
+                this.tweens.add({
+                    targets: bridge,
+                    y: bridge.targetY,
+                    duration: 2000, // 2 seconds to fall - adjust as needed
+                    ease: 'Quad.easeIn', // Accelerating fall for realism
+                    onUpdate: () => {
+                        // Update the physics body position to match the visual position
+                        if (bridge.body) {
+                            bridge.body.updateFromGameObject();
+                        }
+                    },
+                    onComplete: () => {
+                        // Destroy the bridge when it reaches the target
+                        if (bridge.active) {
+                            bridge.destroy();
+                        }
+                    }
+                });
+            });
+        });
+        
+        this.physics.add.collider(my.sprite.player, this.fallingPlat, (player, platform) => {
+            // Only trigger once per platform block
+            if (platform.hasTriggered || platform.isFalling) {
+                return;
+            }
+            
+            platform.hasTriggered = true;
+            platform.isFalling = true;
+            
+            // Store the original position and calculate target Y
+            platform.originalY = platform.y;
+            platform.targetY = platform.y + 1000; // fall distance
+            
+            // Small Delay
+            this.time.delayedCall(800, () => {
+                // Shaking
+                this.tweens.add({
+                    targets: platform,
+                    x: platform.x + Phaser.Math.Between(-2, 2),
+                    duration: 50,
+                    yoyo: true,
+                    repeat: 3,
+                    ease: 'Power2'
+                });
+                
+                // Falling Animation
+                this.tweens.add({
+                    targets: platform,
+                    y: platform.targetY,
+                    duration: 2000, // 2 seconds to fall
+                    ease: 'Quad.easeIn',
+                    onUpdate: () => {
+                        // Update the hitbox to match the platform tile while falling
+                        if (platform.body) {
+                            platform.body.updateFromGameObject();
+                        }
+                    },
+                    onComplete: () => {
+                        // Destroy the platform when it reaches the target
+                        if (platform.active) {
+                            platform.destroy();
+                        }
+                    }
+                });
+            });
+        });
         
         // Setup camera
         this.setupCamera(2.0);
@@ -59,12 +164,33 @@ class TrickbitL2 extends BasePlatformerScene {
         this.door = this.createGameObjects("Doors", "door", 56);
         this.fallingBrid = this.createGameObjects("FallingBridge", "bridge", 161);
         this.fallingPlat = this.createGameObjects("FallingPlatforms", "plat", 333);
+        this.chests = this.createGameObjects("Chests", "chest", 389);
+        this.enemies = this.createGameObjects("Enemy", "enemy", 343);
+
+        // Initialize falling bridge properties
+        if (this.fallingBrid && this.fallingBrid.length > 0) {
+            this.fallingBrid.forEach(bridge => {
+                bridge.hasTriggered = false; // Track if this bridge has been triggered
+                bridge.isFalling = false;    // Track if this bridge is currently falling
+                bridge.originalY = bridge.y; // Store original position
+            });
+        } 
+        
+        // Initialize falling platform properties
+        if (this.fallingPlat && this.fallingPlat.length > 0) {
+            this.fallingPlat.forEach(platform => {
+                platform.hasTriggered = false; // Track if this platform has been triggered
+                platform.isFalling = false;    // Track if this platform is currently falling
+                platform.originalY = platform.y; // Store original position
+            });
+        }
     }
 
     setupCollisions() {
         // Setup collisions from parent class
         this.setupBaseCollisions();
         this.setupJumpBoosterCollision();
+        this.setupEnemyCollision();
     }
 
     openDoor() {
@@ -104,7 +230,7 @@ class TrickbitL2 extends BasePlatformerScene {
                         door.interactText.destroy();
                         
                         this.time.delayedCall(500, () => {
-                            this.scene.start('winScene');
+                            this.scene.start('trickbitScene3');
                         });
                 }
             }
@@ -116,7 +242,8 @@ class TrickbitL2 extends BasePlatformerScene {
         super.update();
         
         // Update Logic (because update is finicky)
-        this.openDoor();
+        this.updateChestInteractions();
+        this.openDoor(); // no key required
 
         if (Phaser.Input.Keyboard.JustDown(this.coordKey)){
             console.log(my.sprite.player.x, my.sprite.player.y);
