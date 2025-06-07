@@ -1,3 +1,4 @@
+// BasePlatformerScene.js
 // Parent class containing shared platformer functionality
 
 class BasePlatformerScene extends Phaser.Scene {
@@ -51,6 +52,10 @@ class BasePlatformerScene extends Phaser.Scene {
         this.lastGuideTrigger = 0;
         this.guideCooldown = 4000;
         this.keyCollected = false;
+        // Enemy AI constants
+        this.ENEMY_DETECTION_RANGE = 200;
+        this.ENEMY_FOLLOW_RANGE = 150;
+        this.ENEMY_SPEED = 80;
     }
 
     preload() {
@@ -85,19 +90,40 @@ class BasePlatformerScene extends Phaser.Scene {
                     }
                 ).setOrigin(0.5).setVisible(false);
             }
+            
+            // Initialize enemy AI properties
+            if (objectName === "enemy") {
+                obj.isTargeting = false;
+                obj.originalX = obj.x;
+                obj.originalY = obj.y;
+                obj.lastDirection = 1; // 1 for right, -1 for left
+            }
         });
         
-        this.physics.world.enable(objects, Phaser.Physics.Arcade.STATIC_BODY);
+        // Enemy Physics
+        if (objectName === "enemy") {
+            // Enable dynamic physics bodies for enemies from the start
+            this.physics.world.enable(objects, Phaser.Physics.Arcade.DYNAMIC_BODY);
+            
+            objects.forEach(enemy => {
+                enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8);
+                enemy.body.setCollideWorldBounds(true);
+                enemy.body.setBounce(0.2);
+            });
+        } else {
+            // Enable static physics bodies for non-enemy objects
+            this.physics.world.enable(objects, Phaser.Physics.Arcade.STATIC_BODY);
+        }
+        
         return objects;
     }
-
     setCollision(layer) {
         layer.setCollisionByProperty({
             collides: true
         });
     }
 
-    // Player setup - common across all levels
+    // Player setup
     setupPlayer() {
         my.sprite.player = this.physics.add.sprite(0, game.config.height/2, "tile_0240.png").setScale(SCALE);
         my.sprite.player.setCollideWorldBounds(true); 
@@ -106,6 +132,7 @@ class BasePlatformerScene extends Phaser.Scene {
         // Input setup
         this.chestInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.doorInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        this.coordKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
         cursors = this.input.keyboard.createCursorKeys();
 
         // Debug key
@@ -154,19 +181,198 @@ class BasePlatformerScene extends Phaser.Scene {
         this.chestBurst.stop();
     }
 
-    // Common collision setups
+    // Collision Setups
     setupBaseCollisions() {
-        // Base terrain collision
+        // Base Terrain Collision
         this.physics.add.collider(my.sprite.player, this.baseLayer);
         
-        // Death collision
+        // Enemy Terrain Collision
+        if (this.enemies) {
+            this.physics.add.collider(this.enemies, this.baseLayer);
+        }
+        
+        // DeathCollision
         this.physics.add.collider(my.sprite.player, this.deathLayer, () => {
             this.sound.play('deaddd', {volume: 0.5});
             this.scene.restart();
         });
     }
 
-    // Camera setup
+    // Key
+    setupKeyCollision() {
+        this.physics.add.overlap(my.sprite.player, this.keyobj, (obj1, obj2) => {
+            this.sound.play('keyyy', {volume: 0.3});
+            obj2.destroy();
+            this.keyCollected = true;
+        });
+    }
+
+    // Door
+    updateDoorInteractions() {
+        this.door.forEach(door => {
+            if (!door.active) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                my.sprite.player.x, my.sprite.player.y,
+                door.x, door.y
+            );
+            
+            door.isNearPlayer = distance < 80;
+            
+            // Create interact text if it doesn't exist
+            if (!door.interactText) {
+                door.interactText = this.add.text(
+                    door.x -20, 
+                    door.y - 40, 
+                    "Press F", 
+                    { 
+                        font: '12px Play', 
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5).setVisible(false);
+            }
+            
+            // Show/hide interact text based on distance
+            door.interactText.setVisible(door.isNearPlayer);
+            
+            // Handle door interaction
+            if (door.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.doorInteract)) {
+                if (this.keyCollected) {
+                    // Player has key - open the door
+                    if (door.frame && door.frame.name !== 58) { 
+                        door.setTexture("tilemap_sheet", 58);
+                        this.sound.play("doorOpen");
+                        door.interactText.destroy();
+                        
+                        this.time.delayedCall(500, () => {
+                            this.scene.start('winScene');
+                        });
+                    }
+                } else {
+                    // Player doesn't have key - show message
+                    if (!this.keyNeededText) {
+                        this.keyNeededText = this.add.text(
+                            my.sprite.player.x, 
+                            my.sprite.player.y - 30, 
+                            "Key needed!", 
+                            { font: '16px Play', fill: '#ffffff' }
+                        ).setOrigin(0.5);
+                        
+                        this.time.addEvent({
+                            delay: 1500,
+                            callback: () => {
+                                if (this.keyNeededText) {
+                                    this.keyNeededText.destroy();
+                                    this.keyNeededText = null;
+                                }
+                            },
+                            callbackScope: this
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    // Enemy
+    setupEnemyCollision() {
+        this.physics.add.collider(my.sprite.player, this.enemies, (player, enemy) => {
+            if (!enemy.hasCollided) {
+                enemy.hasCollided = true;
+
+                this.sound.play('damage', { volume: 0.2 });
+                this.playerHealth -= 20;
+                this.playerHealth = Math.max(0, this.playerHealth);
+
+                const healthText = this.add.text(
+                    player.x,
+                    player.y - 30,
+                    `${this.playerHealth}/100`,
+                    {
+                        font: '16px Play',
+                        fill: this.playerHealth < 30 ? '#FF0000' : '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 4,
+                        fontWeight: 'bold'
+                    }
+                ).setOrigin(0.5).setScale(0.5);
+
+                this.tweens.add({
+                    targets: healthText,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    y: player.y - 60,
+                    duration: 200,
+                    ease: 'Back.easeOut',
+                    yoyo: true,
+                    onComplete: () => {
+                        this.tweens.add({
+                            targets: healthText,
+                            y: healthText.y - 40,
+                            alpha: 0,
+                            duration: 800,
+                            onComplete: () => healthText.destroy()
+                        });
+                    }
+                });
+
+                enemy.destroy();
+
+                if (this.playerHealth <= 0) {
+                    this.sound.play('deaddd', { volume: 0.5 });
+                    this.scene.restart();
+                }
+            }
+        });
+    }
+
+    // Jump Booster
+    setupJumpBoosterCollision() {
+        this.physics.add.collider(my.sprite.player, this.jumpBoosters, (player, booster) => {
+            if (!this.isJumpBoosted) {
+                this.sound.play('boosted', {volume: 0.1});
+                
+                const boostText = this.add.text(
+                    player.x, 
+                    player.y - 40,
+                    "uppies!", 
+                    { 
+                        font: '16px Play', 
+                        fill: '#FFFFFF',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5);
+                
+                this.tweens.add({
+                    targets: boostText,
+                    y: player.y - 80,  
+                    alpha: 0,     
+                    duration: 1000,
+                    ease: 'Power1',
+                    onComplete: () => {
+                        boostText.destroy();
+                    }
+                });
+
+                this.JUMP_HEIGHT = this.BOOSTED_JUMP_HEIGHT;
+                this.isJumpBoosted = true;
+                this.ACCELERATION = this.ACCELERATION * 0.5;
+                this.targetZoom = 2.5;
+                
+                this.boostTimer = this.time.delayedCall(this.BOOST_DURATION, () => {
+                    this.JUMP_HEIGHT = this.BASE_JUMP_HEIGHT;
+                    this.ACCELERATION = this.ACCELERATION * 2;
+                    this.targetZoom = 3;
+                    this.isJumpBoosted = false;
+                });
+            }
+        });
+    }
+
+    // Camera Setup
     setupCamera(scaleSize) {
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels * scaleSize, this.map.heightInPixels * scaleSize);
         this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1);
@@ -175,59 +381,81 @@ class BasePlatformerScene extends Phaser.Scene {
         this.cameras.main.setFollowOffset(0, 0);
     }
 
-    // Common interaction methods
-    openChest(chest) {
-        const chestX = chest.x;
-        const chestY = chest.y;
-        if (chest.frame.name !== 390) { 
-            chest.setTexture("tilemap_sheet", 390);
-            this.sound.play('chestie', {volume: 0.3});
-            this.coinsCollected += 1;
+    // Chest Logic
+    updateChestInteractions() {
+        this.chests.forEach(chest => {
+            if (!chest.active) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                my.sprite.player.x, my.sprite.player.y,
+                chest.x, chest.y
+            );
+            
+            chest.isNearPlayer = distance < 60;
+            chest.interactText.setVisible(chest.isNearPlayer);
+            
+            // Handle chest opening directly within the interaction check
+            if (chest.isNearPlayer && Phaser.Input.Keyboard.JustDown(this.chestInteract)) {
+                // Check if chest is already opened
+                if (chest.frame.name !== 390) { 
+                    const chestX = chest.x;
+                    const chestY = chest.y;
+                    
+                    // Open the chest
+                    chest.setTexture("tilemap_sheet", 390);
+                    this.sound.play('chestie', {volume: 0.3});
+                    this.coinsCollected += 1;
 
-            if (chest.interactText) {
-                chest.interactText.destroy();
+                    // Remove interact text
+                    if (chest.interactText) {
+                        chest.interactText.destroy();
+                    }
+                    
+                    // Start particle effect
+                    this.chestBurst.setPosition(chest.x, chest.y);
+                    this.chestBurst.start();
+                    
+                    // Create +1 text animation
+                    const plusOneText = this.add.text(
+                        chestX, 
+                        chestY - 40,
+                        "+1", 
+                        { 
+                            font: '16px Play', 
+                            fill: '#FFFFFF',
+                            stroke: '#000000',
+                            strokeThickness: 2
+                        }
+                    ).setOrigin(0.5);
+                        
+                    this.tweens.add({
+                        targets: plusOneText,
+                        y: chestY - 80,  
+                        alpha: 0,     
+                        duration: 1000,
+                        ease: 'Power1',
+                        onComplete: () => {
+                            plusOneText.destroy();
+                        }
+                    });
+
+                    // Clean up chest after delay
+                    this.time.delayedCall(1000, () => {
+                        chest.destroy();
+                        this.chestBurst.stop();
+                    });
+                }
             }
-            
-            this.chestBurst.setPosition(chest.x, chest.y);
-            this.chestBurst.start();
-            
-            const plusOneText = this.add.text(
-                chestX, 
-                chestY - 40,
-                "+1", 
-                { 
-                    font: '16px Play', 
-                    fill: '#FFFFFF',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            ).setOrigin(0.5);
-                
-            this.tweens.add({
-                targets: plusOneText,
-                y: chestY - 80,  
-                alpha: 0,     
-                duration: 1000,
-                ease: 'Power1',
-                onComplete: () => {
-                    plusOneText.destroy();
-                }
-            });
-
-            this.time.delayedCall(1000, () => {
-                chest.destroy();
-                this.chestBurst.stop();
-            });
-        }
+        });
     }
 
-    // Common player movement update logic
+    // Player Movement Logic
     updatePlayerMovement() {
         let onGround = my.sprite.player.body.blocked.down;
         let currentAcceleration = onGround ? this.ACCELERATION : this.AIR_ACCELERATION;
         let currentDeceleration = onGround ? this.DECELERATION : this.AIR_DECELERATION;
 
-        // Footstep sound logic
+        // Footstep Sound logic
         if (onGround && (cursors.left.isDown || cursors.right.isDown)) {
             if (Math.abs(my.sprite.player.x - this.lastStepX) >= this.stepDistance) {
                 this.sound.play('walkie', { volume: 1.5 });
@@ -282,7 +510,7 @@ class BasePlatformerScene extends Phaser.Scene {
         }
     }
 
-    // Camera update logic
+    // Camera Update Logic
     updateCamera() {
         if (cursors.left.isDown) {
             this.targetOffsetX = -50;
@@ -316,8 +544,137 @@ class BasePlatformerScene extends Phaser.Scene {
         this.cameras.main.setZoom(Phaser.Math.Linear(this.cameras.main.zoom, this.targetZoom, zoomSpeed));
     }
 
+    // Base Update
     update() {
         this.updatePlayerMovement();
         this.updateCamera();
+        this.updateEnemyAI();
+    }
+
+    createEnemiesAtCoordinates(coordinates) {
+        if (!coordinates || coordinates.length === 0) return [];
+        
+        const enemies = [];
+        
+        coordinates.forEach(coord => {
+            // Create enemy sprite at specified coordinates
+            const enemy = this.physics.add.sprite(coord.x, coord.y, "tile_0340.png");
+            enemy.setScale(2.0);
+            
+            // Enemy AI properties
+            enemy.isTargeting = false;
+            enemy.originalX = coord.x;
+            enemy.originalY = coord.y;
+            enemy.lastDirection = 1; // 1 for right, -1 for left
+            enemy.hasCollided = false;
+            
+            // Physics
+            enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8);
+            enemy.body.setCollideWorldBounds(true);
+            enemy.body.setBounce(0.2);
+            
+            // Enemy Fall Speed
+            enemy.body.setGravityY(this.ENEMY_GRAVITY);
+            
+            // Start with idle animation
+            enemy.anims.play('still', true);
+            
+            enemies.push(enemy);
+        });
+        
+        // Phaser Group for Enemy
+        this.enemies = this.physics.add.group(enemies);
+        
+        return enemies;
+    }
+
+    // Enemy AI/ Pathfinding
+    updateEnemyAI() {
+        if (!this.enemies || !my.sprite.player) return;
+        
+        this.enemies.children.entries.forEach(enemy => {
+            if (!enemy.active) return;
+            
+            const distanceToPlayer = Phaser.Math.Distance.Between(
+                enemy.x, enemy.y,
+                my.sprite.player.x, my.sprite.player.y
+            );
+            
+            // Check if player is in detection range
+            if (distanceToPlayer <= this.ENEMY_DETECTION_RANGE && !enemy.isTargeting) {
+                enemy.isTargeting = true;
+            }
+            
+            // Check if player is out of follow range
+            if (distanceToPlayer > this.ENEMY_FOLLOW_RANGE && enemy.isTargeting) {
+                enemy.isTargeting = false;
+                enemy.body.setVelocityX(0);
+                enemy.body.setVelocityY(0);
+                enemy.anims.play('still', true);
+            }
+            
+            // Move towards player if targeting
+            if (enemy.isTargeting) {
+                const directionX = my.sprite.player.x - enemy.x;
+                const directionY = my.sprite.player.y - enemy.y;
+                
+                // Normalize direction and apply speed
+                const magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
+                if (magnitude > 0) {
+                    const normalizedX = directionX / magnitude;
+                    const normalizedY = directionY / magnitude;
+                    
+                    // Check for edge detection
+                    const edgeCheckDistance = 32; // Distance to check ahead
+                    const checkX = enemy.x + (normalizedX > 0 ? edgeCheckDistance : -edgeCheckDistance);
+                    const checkY = enemy.y + 32; // Check below the enemy
+                    
+                    // Get tile at the check position
+                    const tileBelow = this.baseLayer.getTileAtWorldXY(checkX, checkY);
+                    
+                    // If there's no tile below the next position, don't move horizontally
+                    if (!tileBelow && enemy.body.blocked.down) {
+                        // Stop horizontal movement to avoid falling
+                        enemy.body.setVelocityX(0);
+                        // Only move vertically if needed
+                        if (Math.abs(normalizedY) > 0.3) {
+                            enemy.body.setVelocityY(normalizedY * this.ENEMY_SPEED * 0.5);
+                        }
+                    } else {
+                        // Safe to move normally
+                        enemy.body.setVelocityX(normalizedX * this.ENEMY_SPEED);
+                        if (Math.abs(normalizedY) > 0.3) {
+                            enemy.body.setVelocityY(normalizedY * this.ENEMY_SPEED * 0.5);
+                        }
+                    }
+                    
+                    // Play movement animation
+                    enemy.anims.play('scurry', true);
+                    
+                    // Flip sprite based on movement direction
+                    if (normalizedX > 0) {
+                        enemy.setFlipX(false);
+                        enemy.lastDirection = 1;
+                    } else if (normalizedX < 0) {
+                        enemy.setFlipX(true);
+                        enemy.lastDirection = -1;
+                    }
+                }
+            } else {
+                // Gradually slow down when not targeting
+                const currentVelX = enemy.body.velocity.x;
+                const currentVelY = enemy.body.velocity.y;
+                
+                enemy.body.setVelocityX(currentVelX * 0.9);
+                enemy.body.setVelocityY(currentVelY * 0.9);
+                
+                // Stop completely if velocity is very low
+                if (Math.abs(enemy.body.velocity.x) < 5 && Math.abs(enemy.body.velocity.y) < 5) {
+                    enemy.body.setVelocityX(0);
+                    enemy.body.setVelocityY(0);
+                    enemy.anims.play('still', true);
+                }
+            }
+        });
     }
 }
