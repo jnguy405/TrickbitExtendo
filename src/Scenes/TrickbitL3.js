@@ -41,6 +41,9 @@ class TrickbitL3 extends BasePlatformerScene {
         // Create enemies
         this.createEnemiesAtCoordinates(this.enemySpawnPoints);
         
+        // Level Title
+        this.showLevelNameTypewriter("Admin Authorization");
+
         // Setup player and particles
         this.setupPlayer();
         this.setupParticles();

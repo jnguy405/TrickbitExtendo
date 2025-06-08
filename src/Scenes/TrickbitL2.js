@@ -30,6 +30,9 @@ class TrickbitL2 extends BasePlatformerScene {
         // Create enemies
         this.createEnemiesAtCoordinates(this.enemySpawnPoints);
         
+        // Level Title
+        this.showLevelNameTypewriter("Error 404");
+
         // Setup player and particles
         this.setupPlayer();
         this.setupParticles();

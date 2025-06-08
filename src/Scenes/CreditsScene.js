@@ -13,7 +13,7 @@ class CreditsScene extends Phaser.Scene {
             this.cameras.main.height + this.cameras.main.height / 2,
             this.cameras.main.width,
             this.cameras.main.height,
-            0x001122
+            0x1A0A0A
         ).setOrigin(0.5);
         
         // Create title (initially hidden)
@@ -24,7 +24,7 @@ class CreditsScene extends Phaser.Scene {
             {
                 fontFamily: 'Play',
                 fontSize: '120px',
-                color: '#00ffff',
+                color: '#ff0000',
                 stroke: '#000000',
                 strokeThickness: 6
             }
@@ -47,7 +47,7 @@ class CreditsScene extends Phaser.Scene {
                 {
                     fontFamily: 'Play',
                     fontSize: '48px',
-                    color: '#ffff00',
+                    color: '#fe019a',
                     stroke: '#000000',
                     strokeThickness: 4
                 }
@@ -93,7 +93,7 @@ class CreditsScene extends Phaser.Scene {
             {
                 fontFamily: 'Play',
                 fontSize: '48px',
-                color: '#00ffff'
+                color: '#ff0000'
             }
         ).setOrigin(0.5).setAlpha(0);
         

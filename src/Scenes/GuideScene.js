@@ -13,7 +13,7 @@ class GuideScene extends Phaser.Scene {
             this.cameras.main.centerY,
             this.cameras.main.width,
             this.cameras.main.height,
-            0x001122
+            0x1A0A0A
         ).setOrigin(0.5);
         
         // Create title (initially hidden)
@@ -24,7 +24,7 @@ class GuideScene extends Phaser.Scene {
             {
                 fontFamily: 'Play',
                 fontSize: '120px',
-                color: '#00ffff',
+                color: '#ff0000',
                 stroke: '#000000',
                 strokeThickness: 6
             }
@@ -67,7 +67,7 @@ class GuideScene extends Phaser.Scene {
             {
                 fontFamily: 'Play',
                 fontSize: '48px',
-                color: '#00ffff'
+                color: '#ff0000'
             }
         ).setOrigin(0.5).setAlpha(0);
         

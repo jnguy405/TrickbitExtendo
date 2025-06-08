@@ -31,6 +31,9 @@ class TrickbitL1 extends BasePlatformerScene {
         // Create enemies
         this.createEnemiesAtCoordinates(this.enemySpawnPoints);
         
+        // Level Title
+        this.showLevelNameTypewriter("Welcome, User");
+
         // Setup player and particles
         this.setupPlayer();
         this.setupParticles();
@@ -224,3 +227,5 @@ class TrickbitL1 extends BasePlatformerScene {
         });
     }
 }
+
+TrickbitL1.destroy();

@@ -1,3 +1,6 @@
+// WinScene.js
+// Win screen with winner message
+
 class WinScene extends Phaser.Scene {
     constructor() {
         super("winScene");
@@ -21,7 +24,7 @@ class WinScene extends Phaser.Scene {
             {
                 fontFamily: 'Play',
                 fontSize: '128px',
-                color: '#ffffff',
+                color: '#ff0000',
                 stroke: '#000000',
                 strokeThickness: 8
             }

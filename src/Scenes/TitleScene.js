@@ -1,5 +1,5 @@
 // TitleScreen.js
-// Title screen with WinScene-style animations
+// Title screen with menu select
 
 class TitleScene extends Phaser.Scene {
     constructor() {
@@ -63,7 +63,7 @@ class TitleScene extends Phaser.Scene {
                 {
                     fontFamily: 'Play',
                     fontSize: '72px',
-                    color: '#00ffff',
+                    color: '#ff0000',
                     stroke: '#000000',
                     strokeThickness: 4
                 }
@@ -173,7 +173,7 @@ class TitleScene extends Phaser.Scene {
             const isSelected = index === this.selectedLevel;
             
             levelText.setStyle({
-                color: isSelected ? '#ffffff' : '#00ffff'
+                color: isSelected ? '#ffffff' : '#ff0000'
             });
             
             // Pulse animation for selected level

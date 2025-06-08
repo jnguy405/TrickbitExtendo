@@ -315,6 +315,44 @@ class BasePlatformerScene extends Phaser.Scene {
         this.cameras.main.setFollowOffset(0, 0);
     }
 
+    // Level Title
+    showLevelNameTypewriter(levelName) {
+        const levelText = this.add.text(
+            this.cameras.main.centerX,
+            600,
+            levelName, 
+            {
+                fontFamily: 'Play',
+                fontSize: '50px',
+                color: '#ff0000',
+                stroke: '#000000',
+                strokeThickness: 6,
+                align: 'center'
+            }
+        ).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
+
+        // Pop-in animation from top
+        this.tweens.add({
+            targets: levelText,
+            y: -100,
+            duration: 10000,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Hold for 2 seconds then fade out
+                this.time.delayedCall(2000, () => {
+                    this.tweens.add({
+                        targets: levelText,
+                        alpha: 0,
+                        duration: 10000,
+                        onComplete: () => {
+                            levelText.destroy();
+                        }
+                    });
+                });
+            }
+        });
+    }
+
     // Chest Logic
     updateChestInteractions() {
         this.chests.forEach(chest => {
