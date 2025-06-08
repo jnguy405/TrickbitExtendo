@@ -36,6 +36,7 @@ class BasePlatformerScene extends Phaser.Scene {
         this.boostTimer = null;
         this.JUMP_HEIGHT = this.BASE_JUMP_HEIGHT;
         this.PARTICLE_VELOCITY = 50;
+        this.ENEMY_GRAVITY = 800; // gravity for enemies
     }
 
     initCameraConfig() {
@@ -57,6 +58,9 @@ class BasePlatformerScene extends Phaser.Scene {
         this.ENEMY_DETECTION_RANGE = 200;
         this.ENEMY_FOLLOW_RANGE = 150;
         this.ENEMY_SPEED = 80;
+        this.ENEMY_PATROL_SPEED = 40;       // Slower speed for patrolling
+        this.ENEMY_PATROL_DISTANCE = 50;   // How far enemies patrol from spawn
+        this.ENEMY_DAMAGE_COOLDOWN = 2000;  // 2 seconds between damage instances
     }
 
     preload() {
@@ -98,6 +102,13 @@ class BasePlatformerScene extends Phaser.Scene {
                 obj.originalX = obj.x;
                 obj.originalY = obj.y;
                 obj.lastDirection = 1; // 1 for right, -1 for left
+
+                obj.isPatrolling = true;
+                obj.patrolDirection = 1; // Start moving right
+                obj.patrolLeftBound = obj.x - this.ENEMY_PATROL_DISTANCE;
+                obj.patrolRightBound = obj.x + this.ENEMY_PATROL_DISTANCE;
+                // Collision system
+                obj.hasCollided = false;
             }
         });
         
@@ -171,7 +182,7 @@ class BasePlatformerScene extends Phaser.Scene {
             speed: {min: 45, max: 80},
             angle: {min: 0, max: 360},
             quantity: 6,
-            scale: {start: 0.05, end: 0.0},
+            scale: {start: 0.12, end: 0.0},
             alpha: {start: 1, end: 0},
             rotate: {min: 0, max: 135},
         });
@@ -204,8 +215,7 @@ class BasePlatformerScene extends Phaser.Scene {
         });
     }
 
-
-    // Enemy
+    // Enemy - Enemy destroyed after one hit
     setupEnemyCollision() {
         this.physics.add.collider(my.sprite.player, this.enemies, (player, enemy) => {
             if (!enemy.hasCollided) {
@@ -247,6 +257,7 @@ class BasePlatformerScene extends Phaser.Scene {
                     }
                 });
 
+                // Destroy enemy after hit
                 enemy.destroy();
 
                 if (this.playerHealth <= 0) {
@@ -533,6 +544,13 @@ class BasePlatformerScene extends Phaser.Scene {
             enemy.originalX = coord.x;
             enemy.originalY = coord.y;
             enemy.lastDirection = 1; // 1 for right, -1 for left
+            
+            enemy.isPatrolling = true;
+            enemy.patrolDirection = 1; // Start moving right
+            enemy.patrolLeftBound = coord.x - this.ENEMY_PATROL_DISTANCE;
+            enemy.patrolRightBound = coord.x + this.ENEMY_PATROL_DISTANCE;
+            
+            // Collision system
             enemy.hasCollided = false;
             
             // Physics
@@ -555,7 +573,6 @@ class BasePlatformerScene extends Phaser.Scene {
         return enemies;
     }
 
-    // Enemy AI/ Pathfinding
     updateEnemyAI() {
         if (!this.enemies || !my.sprite.player) return;
         
@@ -570,55 +587,33 @@ class BasePlatformerScene extends Phaser.Scene {
             // Check if player is in detection range
             if (distanceToPlayer <= this.ENEMY_DETECTION_RANGE && !enemy.isTargeting) {
                 enemy.isTargeting = true;
+                enemy.isPatrolling = false;
             }
             
             // Check if player is out of follow range
             if (distanceToPlayer > this.ENEMY_FOLLOW_RANGE && enemy.isTargeting) {
                 enemy.isTargeting = false;
-                enemy.body.setVelocityX(0);
-                enemy.body.setVelocityY(0);
-                enemy.anims.play('still', true);
+                enemy.isPatrolling = true; // patrolling
             }
             
-            // Move towards player if targeting
+            // CHASE BEHAVIOR
             if (enemy.isTargeting) {
                 const directionX = my.sprite.player.x - enemy.x;
                 const directionY = my.sprite.player.y - enemy.y;
                 
-                // Normalize direction and apply speed
                 const magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
                 if (magnitude > 0) {
                     const normalizedX = directionX / magnitude;
                     const normalizedY = directionY / magnitude;
                     
-                    // Check for edge detection
-                    const edgeCheckDistance = 32; // Distance to check ahead
-                    const checkX = enemy.x + (normalizedX > 0 ? edgeCheckDistance : -edgeCheckDistance);
-                    const checkY = enemy.y + 32; // Check below the enemy
-                    
-                    // Get tile at the check position
-                    const tileBelow = this.baseLayer.getTileAtWorldXY(checkX, checkY);
-                    
-                    // If there's no tile below the next position, don't move horizontally
-                    if (!tileBelow && enemy.body.blocked.down) {
-                        // Stop horizontal movement to avoid falling
-                        enemy.body.setVelocityX(0);
-                        // Only move vertically if needed
-                        if (Math.abs(normalizedY) > 0.3) {
-                            enemy.body.setVelocityY(normalizedY * this.ENEMY_SPEED * 0.5);
-                        }
-                    } else {
-                        // Safe to move normally
-                        enemy.body.setVelocityX(normalizedX * this.ENEMY_SPEED);
-                        if (Math.abs(normalizedY) > 0.3) {
-                            enemy.body.setVelocityY(normalizedY * this.ENEMY_SPEED * 0.5);
-                        }
+                    // let enemies fall while chasing
+                    enemy.body.setVelocityX(normalizedX * this.ENEMY_SPEED);
+                    if (Math.abs(normalizedY) > 0.3) {
+                        enemy.body.setVelocityY(normalizedY * this.ENEMY_SPEED * 0.5);
                     }
                     
-                    // Play movement animation
                     enemy.anims.play('scurry', true);
                     
-                    // Flip sprite based on movement direction
                     if (normalizedX > 0) {
                         enemy.setFlipX(false);
                         enemy.lastDirection = 1;
@@ -627,20 +622,41 @@ class BasePlatformerScene extends Phaser.Scene {
                         enemy.lastDirection = -1;
                     }
                 }
-            } else {
-                // Gradually slow down when not targeting
-                const currentVelX = enemy.body.velocity.x;
-                const currentVelY = enemy.body.velocity.y;
-                
-                enemy.body.setVelocityX(currentVelX * 0.9);
-                enemy.body.setVelocityY(currentVelY * 0.9);
-                
-                // Stop completely if velocity is very low
-                if (Math.abs(enemy.body.velocity.x) < 5 && Math.abs(enemy.body.velocity.y) < 5) {
-                    enemy.body.setVelocityX(0);
-                    enemy.body.setVelocityY(0);
-                    enemy.anims.play('still', true);
+            }
+            // PATROL BEHAVIOR edge detection
+            else if (enemy.isPatrolling) {
+                // Check if enemy hit boundaries
+                if (enemy.x >= enemy.patrolRightBound) {
+                    enemy.patrolDirection = -1; // Turn left
+                } else if (enemy.x <= enemy.patrolLeftBound) {
+                    enemy.patrolDirection = 1; // Turn right
                 }
+
+                const edgeCheckDistance = 32;
+                const checkX = enemy.x + (enemy.patrolDirection > 0 ? edgeCheckDistance : -edgeCheckDistance);
+                const checkY = enemy.y + 32;
+                const tileBelow = this.baseLayer.getTileAtWorldXY(checkX, checkY);
+                
+                if (!tileBelow && enemy.body.blocked.down) {
+                    enemy.patrolDirection *= -1;
+                }
+                
+                enemy.body.setVelocityX(enemy.patrolDirection * this.ENEMY_PATROL_SPEED);
+                
+                // Set sprite direction and animation
+                if (enemy.patrolDirection > 0) {
+                    enemy.setFlipX(false);
+                } else {
+                    enemy.setFlipX(true);
+                }
+                
+                // Play walking animation during patrol
+                enemy.anims.play('scurry', true);
+            }
+            // IDLE STATE (fallback)
+            else {
+                enemy.body.setVelocityX(0);
+                enemy.anims.play('still', true);
             }
         });
     }
