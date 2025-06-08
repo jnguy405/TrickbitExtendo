@@ -56,7 +56,6 @@ class TrickbitL2 extends BasePlatformerScene {
             
             // Add a small delay before the bridge starts falling for dramatic effect
             this.time.delayedCall(100, () => {
-                this.platforms.start();
                 this.tweens.add({
                     targets: bridge,
                     x: bridge.x + Phaser.Math.Between(-2, 2),
