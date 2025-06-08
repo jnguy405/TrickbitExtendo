@@ -92,7 +92,7 @@ class TrickbitL1 extends BasePlatformerScene {
     setupGuideCollision() {
         this.physics.add.collider(my.sprite.player, this.guideblock, (player, block) => {
             const now = Date.now();
-            // Custom Hitbox 1
+            // Custom Hitbox
             this.physics.world.enable(this.guideblock, Phaser.Physics.Arcade.STATIC_BODY);
             block.body.setSize(20, 10);
             block.body.setOffset(8, 20);

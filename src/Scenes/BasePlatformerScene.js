@@ -22,6 +22,7 @@ class BasePlatformerScene extends Phaser.Scene {
         this.physics.world.drawDebug = false;
     }
 
+    // Player Physics and Gravity
     initPhysicsConstants() {
         this.ACCELERATION = 4 * 100;    
         this.MAX_SPEED = 2 * 100;         
@@ -39,6 +40,7 @@ class BasePlatformerScene extends Phaser.Scene {
         this.ENEMY_GRAVITY = 800; // gravity for enemies
     }
 
+    // Camera Configuration
     initCameraConfig() {
         this.targetZoom = 3;
         this.targetOffsetX = 0;
@@ -47,6 +49,7 @@ class BasePlatformerScene extends Phaser.Scene {
     }
 
     initGameState() {
+        // Tracking variables
         this.lastStepX = 0;
         this.stepDistance = 64;
         this.playerHealth = 100;
@@ -63,6 +66,7 @@ class BasePlatformerScene extends Phaser.Scene {
         this.ENEMY_DAMAGE_COOLDOWN = 2000;  // 2 seconds between damage instances
     }
 
+    // Animation plugin (works sometimes?)
     preload() {
         this.load.scenePlugin('AnimatedTiles', './lib/AnimatedTiles.js', 'animatedTiles', 'animatedTiles');
     }
@@ -118,7 +122,7 @@ class BasePlatformerScene extends Phaser.Scene {
             this.physics.world.enable(objects, Phaser.Physics.Arcade.DYNAMIC_BODY);
             
             objects.forEach(enemy => {
-                enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8);
+                enemy.body.setSize(enemy.width * 0.8, enemy.height * 0.8); // Custom Hitbox
                 enemy.body.setCollideWorldBounds(true);
                 enemy.body.setBounce(0.2);
             });
@@ -130,7 +134,7 @@ class BasePlatformerScene extends Phaser.Scene {
         return objects;
     }
     
-    // Collision Prop
+    // Collision Properties
     setCollision(layer) {
         layer.setCollisionByProperty({
             collides: true
@@ -141,7 +145,7 @@ class BasePlatformerScene extends Phaser.Scene {
     setupPlayer() {
         my.sprite.player = this.physics.add.sprite(0, game.config.height/2, "tile_0240.png").setScale(SCALE);
         my.sprite.player.setCollideWorldBounds(true); 
-        my.sprite.player.body.setSize(12, 16).setOffset(2, 0);
+        my.sprite.player.body.setSize(12, 16).setOffset(2, 0); // Custom Hitbox
 
         // Input setup
         this.chestInteract = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
@@ -155,16 +159,16 @@ class BasePlatformerScene extends Phaser.Scene {
         // Walking particles
         this.walking = this.add.particles(0, 0, "kenny-particles", {
             frame: ['magic_01.png', 'magic_02.png'],
-            scale: {start: 0.01, end: 0.05, random: true},
-            lifespan: 300, maxAliveParticles: 6,
-            alpha: {start: 1, end: 0.1, gravityY: -400},
+            scale: {start: 0.01, end: 0.07, random: true},
+            lifespan: 700, maxAliveParticles: 4,
+            alpha: {start: 1, end: 0.1, gravityY: 200},
         });
         this.walking.stop();
 
         // Jumping particles
         this.jumping = this.add.particles(0, 0, 'kenny-particles', {
             frame: ['twirl_01.png', 'twirl_02.png'],
-            scale: { start: 0.01, end: 0.1 },
+            scale: { start: 0.01, end: 0.08 },
             lifespan: 500,  
             maxAliveParticles: 2,
             alpha: { start: 1, end: 0 },
@@ -225,6 +229,7 @@ class BasePlatformerScene extends Phaser.Scene {
                 this.playerHealth -= 20;
                 this.playerHealth = Math.max(0, this.playerHealth);
 
+                // Display health when hit
                 const healthText = this.add.text(
                     player.x,
                     player.y - 30,
@@ -297,6 +302,7 @@ class BasePlatformerScene extends Phaser.Scene {
                     }
                 });
 
+                // Variable Adjustments for booster
                 this.JUMP_HEIGHT = this.BOOSTED_JUMP_HEIGHT;
                 this.isJumpBoosted = true;
                 this.ACCELERATION = this.ACCELERATION * 0.5;
@@ -344,7 +350,7 @@ class BasePlatformerScene extends Phaser.Scene {
             duration: 10000,
             ease: 'Back.easeOut',
             onComplete: () => {
-                // Hold for 2 seconds then fade out
+                // Hold then fade out
                 this.time.delayedCall(2000, () => {
                     this.tweens.add({
                         targets: levelText,
@@ -529,6 +535,8 @@ class BasePlatformerScene extends Phaser.Scene {
         this.updateEnemyAI();
     }
 
+    // Enemy Patrol and Pathfinding Logic
+    // enemy creation
     createEnemiesAtCoordinates(coordinates) {
         if (!coordinates || coordinates.length === 0) return [];
         
@@ -573,6 +581,7 @@ class BasePlatformerScene extends Phaser.Scene {
         return enemies;
     }
 
+    // Enemy AI
     updateEnemyAI() {
         if (!this.enemies || !my.sprite.player) return;
         
