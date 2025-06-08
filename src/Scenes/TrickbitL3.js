@@ -5,7 +5,6 @@ class TrickbitL3 extends BasePlatformerScene {
 
     init() {
         super.init(); // Call parent init 
-        
         // Level 3 specific key system
         this.keysCollected = 0;
         this.keysRequired = 3;
@@ -286,9 +285,5 @@ class TrickbitL3 extends BasePlatformerScene {
         // Update Level 3 specific interactions
         this.updateChestInteractions();
         this.updateLevel3DoorInteractions(); // Use Level 3 specific door interactions
-        
-        if (Phaser.Input.Keyboard.JustDown(this.coordKey)){
-            console.log(my.sprite.player.x, my.sprite.player.y);
-        };
     }
 }

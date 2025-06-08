@@ -93,7 +93,7 @@ class TitleScene extends Phaser.Scene {
             'UP/DOWN to select • ENTER/SPACE to start',
             {
                 fontFamily: 'Play',
-                fontSize: '36px',
+                fontSize: '48px',
                 color: '#ffffff'
             }
         ).setOrigin(0.5).setAlpha(0);

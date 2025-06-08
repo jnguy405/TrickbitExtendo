@@ -33,7 +33,7 @@ class GuideScene extends Phaser.Scene {
         // Create guide content (initially hidden)
         const guideContent = [
             "• Use ARROW KEYS to move your character",
-            "• Collect all BITS to unlock the exit",
+            "• Collect all KEYS to unlock the exit",
             "• Avoid obstacles and enemies",
             "• Some platforms may move or disappear",
             "• Die to restart current level",

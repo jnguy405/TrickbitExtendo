@@ -247,9 +247,5 @@ class TrickbitL2 extends BasePlatformerScene {
         // Update Logic (because update is finicky)
         this.updateChestInteractions();
         this.openDoor(); // no key required
-
-        if (Phaser.Input.Keyboard.JustDown(this.coordKey)){
-            console.log(my.sprite.player.x, my.sprite.player.y);
-        };
     }
 }

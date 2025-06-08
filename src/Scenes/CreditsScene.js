@@ -32,9 +32,9 @@ class CreditsScene extends Phaser.Scene {
         
         // Create credits content
         const creditsContent = [
-            { title: "GAME DESIGN & DEVELOPMENT", name: "Jenalee Nguyen" },
-            { title: "KENNY GRAPHICS & PARTICLES", name: "https://kenney.nl/assets/1-bit-platformer-pack\nhttps://www.kenney.nl/assets/particle-pack" },
-            { title: "KENNY SOUND ASSETS", name: "https://www.kenney.nl/assets/ui-audio\nhttps://www.kenney.nl/assets/digital-audio" },
+            { title: "GAME DESIGN & DEVELOPMENT", name: "Jenalee Nguyen jnguy405@ucsc.edu" },
+            { title: "KENNY GRAPHICS & PARTICLES", name: "\nhttps://kenney.nl/assets/1-bit-platformer-pack\nhttps://www.kenney.nl/assets/particle-pack" },
+            { title: "KENNY SOUND ASSETS", name: "\nhttps://www.kenney.nl/assets/ui-audio\nhttps://www.kenney.nl/assets/digital-audio" },
             { title: "MINECRAFT SOUND ASSET", name: "https://minecraft.fandom.com/wiki/Category:Grass_sounds" },
         ];
         
@@ -42,7 +42,7 @@ class CreditsScene extends Phaser.Scene {
         creditsContent.forEach((credit, index) => {
             const titleText = this.add.text(
                 this.cameras.main.centerX,
-                200 + (index * 240),
+                200 + (index * 220),
                 credit.title,
                 {
                     fontFamily: 'Play',
@@ -55,7 +55,7 @@ class CreditsScene extends Phaser.Scene {
             
             const nameText = this.add.text(
                 this.cameras.main.centerX,
-                260 + (index * 250),
+                260 + (index * 220),
                 credit.name,
                 {
                     fontFamily: 'Play',

@@ -152,10 +152,6 @@ class TrickbitL1 extends BasePlatformerScene {
         // Update Logic (because update is finicky)
         this.updateDoorInteractions();
         this.updateChestInteractions();
-
-        if (Phaser.Input.Keyboard.JustDown(this.coordKey)){
-            console.log(my.sprite.player.x, my.sprite.player.y);
-        };
     }
 
     // Door
@@ -227,5 +223,3 @@ class TrickbitL1 extends BasePlatformerScene {
         });
     }
 }
-
-TrickbitL1.destroy();

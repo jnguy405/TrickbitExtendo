@@ -78,11 +78,6 @@ class BasePlatformerScene extends Phaser.Scene {
             obj.x = obj.x * scaleSize;
             obj.y = obj.y * scaleSize;
 
-            if (objectName === "key") {
-                obj.body.setSize(5, 5);
-                obj.body.setOffset(3, 10);
-            }
-
             if (objectName === "chest") {
                 obj.interactText = this.add.text(
                     obj.x,
